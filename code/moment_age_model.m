@@ -1,0 +1,111 @@
+function parcel_data = moment_age_model(moment_metric, age_metric, ...
+    input_table, uparc, total_num_parcels, valid_parcels, fdr_correction, thickness)
+%--------------------------------------------------------------------------
+% performs parcel-wise linear models: moment_metric ~ age_metric + sex (+ thickness)
+%
+% input:  moment_metric      string for response variable in the model. Must 
+%                            be a column name of input_table ("cog" or "variance")
+%         age_metric         string for predictor variable or array of strings
+%                            of predictor variables. Must be a column name(s)
+%                            of input_table ("PMA", "GA" and/or "PNA")
+%         input_table        table that contains subject-specific,
+%                            parcel-wise values for each variable of interest
+%         uparc              parcel indices for which the models will be run. These
+%                            must appear in the column "parcel" of input_table
+%         total_num_parcels  total number of parcels within the parcellation. This
+%                            can be different from the number of parcels in
+%                            uparc, if certain parcels are excluded from the analysis
+%         valid_parcels      array delineating the positions of the parcels of interest
+%                            (uparc) within the actual number of parcels. These can
+%                            sometime differ from the actual parcel index depending on
+%                            the parcellation scheme
+%         fdr_correction     logical value (0 or 1) stating whether FDR
+%                            correction will be applied (1) or not (0). The
+%                            parcel values which don't survive FDR correction
+%                            are replaced with the value of 100
+%         thickness          logical value (0 or 1) stating whether thickness
+%                            should be included as predictor in the models. Note
+%                            that thickness values should appear under the table
+%                            name "thick" in input_table
+%
+% output: parcel_data :      vector (length = total_num_parcels) with values:
+%                                  -100 : for parcels not within valid_parcels
+%                                  tStat-values: for parcels with significant effects
+%                                  100 : for parcels with no significant effects after
+%                                      FDR-correction (if chosen)
+%
+% Example:
+%   vec = moment_age_model('cen_of_grav','PMA', ...
+%       input_table, uparc, total_num_parcels, valid_parcels, 1, 0);
+%--------------------------------------------------------------------------
+
+% Input validation
+moment_metric = string(moment_metric);
+age_metric    = string(age_metric);
+moments  = ["cog","variance"];
+age_vars = ["PMA","GA","PNA"];
+if ~any(moment_metric == moments)
+    error('moment_metric must be one of: %s', strjoin(cellstr(moments), ', '));
+end
+if ~isstring(age_metric)
+    error('age_metric must be a string scalar (e.g. "PMA") or string array (e.g. ["GA","PNA"])');
+end
+if any(~ismember(age_metric, age_vars))
+    error('all age predictors must be among: %s', strjoin(cellstr(age_vars), ', '));
+end
+
+% Model formula
+age_combo = strjoin(cellstr(age_metric), ' + ');
+if thickness == 1
+    formula = sprintf('%s ~ %s + sex + thick', moment_metric, age_combo);
+else
+    formula = sprintf('%s ~ %s + sex', moment_metric, age_combo);
+end
+
+% Parcel-wise linear models
+estmt = table();
+
+for i = 1:length(uparc)
+
+    parcel_data = input_table(input_table.parcel == uparc(i), :);
+
+    % model formula
+    mdl = fitlm(parcel_data, formula);
+    coeffs = mdl.Coefficients;
+
+    for a = 1:numel(age_metric)
+        pred = age_metric(a);
+        age_coeffs = strcmp(coeffs.Properties.RowNames, char(pred));
+        estmt = [estmt; table(uparc(i), pred, coeffs.tStat(age_coeffs), ...
+            coeffs.pValue(age_coeffs), 'VariableNames', {'Parcel','Predictor','tStat','pValue'})];
+    end
+
+end
+
+% FDR correction
+estmt.FDR = fdr_bh(estmt.pValue);
+
+% create parcel vector (non-valid parcels will retain the
+% value of -100 for visualisation purposes
+parcel_data = -100 * ones(total_num_parcels,length(age_metric));
+if length(age_metric) == 1
+    tmp = estmt.tStat;
+    sig = estmt.FDR;
+    if fdr_correction == 1
+        % assign the value of 100 to parcels with no significant effects for
+        % visualisation purposes
+        tmp(sig == 0) = 100;
+    end
+    parcel_data(valid_parcels) = tmp;
+else
+    for i = 1:length(age_metric)
+        tmp = estmt.tStat(estmt.Predictor == age_metric(i));
+        sig = estmt.FDR(estmt.Predictor == age_metric(i));
+        if fdr_correction == 1
+            % assign the value of 100 to parcels with no significant effects for
+            % visualisation purposes
+            tmp(sig == 0) = 100;
+        end
+        parcel_data(valid_parcels,i) = tmp;
+    end
+end
