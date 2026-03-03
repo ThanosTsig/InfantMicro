@@ -9,7 +9,7 @@ for init_project = 1
     % toolbox)
     addpath(genpath([GH '/munesoft']))
     addpath(genpath([GH '/surfstat'])) 
-    addpath(genpath([homeDir '/scripts']))
+    addpath(genpath([homeDir '/code']))
     addpath(genpath([homeDir '/gifti']))
 
     % load data
@@ -54,10 +54,10 @@ for init_project = 1
         load(strcat(scicol, '/', scicol_names(ii), '.mat'));    
     end
 
-    % load eigenmodes 2, 3 and 4
-    eigenmodes = readmatrix([homeDir '/week-40_pial_hemi-left_emode_2-4.txt']);
+   % load eigenmodes 2, 3 and 4
+    eigenmodes = readmatrix([homeDir '/resources/week-40_pial_emode_2-4.txt']);
     % load previously used permutation indices
-    load([homeDir '/economo_spin_wk40.mat'], 'perm_id')
+    load([homeDir '/resources/economo_spin_wk40.mat'], 'perm_id')
 
 end
 
