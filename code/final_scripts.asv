@@ -3,17 +3,13 @@ for init_project = 1
     GH           = '/Users/ttsigaras/Documents/GitHub'; % GitHub directory
     homeDir      = [GH '/InfantMicro'];
 
-    fsDir        = '/Applications/freesurfer'; % FreeSurfer directory
-    fsAv         = '/Applications/freesurfer'; % fsaverage directory
-
-    outDir       = [homeDir '/output']; % output directory
     wk40_tpl_dir = [homeDir '/tpl-week-40']; % week-40 template directory
 
     % add paths for GitHub directories (munesoft, SurfStat toolbox and gifti
     % toolbox)
     addpath(genpath([GH '/munesoft']))
     addpath(genpath([GH '/surfstat'])) 
-    addpath(genpath([homeDir '/scripts']))
+    addpath(genpath([homeDir '/code']))
     addpath(genpath([homeDir '/gifti']))
 
     % load data
@@ -59,9 +55,9 @@ for init_project = 1
     end
 
     % load eigenmodes 2, 3 and 4
-    eigenmodes = readmatrix([homeDir '/week-40_pial_hemi-left_emode_2-4.txt']);
+    eigenmodes = readmatrix([homeDir '/resources/week-40_pial_emode_2-4.txt']);
     % load previously used permutation indices
-    load([homeDir '/economo_spin_wk40.mat'], 'perm_id')
+    load([homeDir '/resources/economo_spin_wk40.mat'], 'perm_id')
 
 end
 
