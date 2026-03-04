@@ -511,14 +511,14 @@ for figure_5 = 1
         % run linear models and concatenate t-values
         for mom = 1:length(moments)
             if mom == 1
-                cog_parcel_data_PMA = moment_age_model("cen_of_grav", "PMA", ...
+                cog_parcel_data_PMA = moment_age_model("cog", "PMA", ...
                     final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
-                cog_parcel_data_GA_PNA = moment_age_model("cen_of_grav", ["GA", "PNA"], ...
+                cog_parcel_data_GA_PNA = moment_age_model("cog", ["GA", "PNA"], ...
                     final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             else
-                var_parcel_data_PMA = moment_age_model("std", "PMA", ...
+                var_parcel_data_PMA = moment_age_model("variance", "PMA", ...
                     final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
-                var_parcel_data_GA_PNA = moment_age_model("std", ["GA", "PNA"], ...
+                var_parcel_data_GA_PNA = moment_age_model("variance", ["GA", "PNA"], ...
                     final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             end
         end
@@ -586,7 +586,7 @@ for figure_5 = 1
             elseif strcmp(groupped_by, 'eigenmodes')
                 correlation = reshape(correlation, 1, []);
                 whiskers = permute(whiskers, [1, 3, 2]);
-                whiskers = reshape(whiskers, 2, 9);
+                whiskers = reshape(whiskers, 2, 6);
             end
         
             col_scaled = round(1 + ((correlation + max(abs(correlation))) ./ ...
@@ -595,7 +595,7 @@ for figure_5 = 1
             if strcmp(orientation, 'horizontal')
                 xline(0, 'k--', 'LineWidth', 1);
                 scatter(correlation, -positions, 120, vik(col_scaled,:), 'filled');
-                for i = 1:9
+                for i = 1:6
                     plot([whiskers(1,i), whiskers(2,i)], [-positions(i), -positions(i)], ...
                         'Color', 'k', 'LineWidth', 1);
                 end
