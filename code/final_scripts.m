@@ -18,7 +18,7 @@ for init_project = 1
     load([homeDir, '/age_variables.mat'], 'age_vars');
     load([homeDir, '/dHCP_parcel_moments.mat'], 'dHCP_moments_parc');
     load([homeDir, '/dHCP_gen_table_schaefer200.mat'], 'final_table_schaefer200', 'final_table_avg_schaefer200')
-    load([homeDir, '/dHCP_final_table_no_twins.mat'], 'final_table_no_twins', 'final_table_avg_no_twins')
+    load([homeDir, '/dHCP_gen_table_no_twins.mat'], 'final_table_no_twins', 'final_table_avg_no_twins')
 
     uparc_economo = unique(final_table.parcel); % unique Von Economo parcel indices
     uparc_schaefer200 = unique(final_table_schaefer200.parcel); % unique Schaefer-200 parcel indices
