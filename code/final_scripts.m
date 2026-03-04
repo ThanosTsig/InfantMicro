@@ -251,7 +251,11 @@ for figure_3 = 1
             sign_vert_data_PMA = BoSurfStatMakeParcelData(sign_parc_data_PMA, wk40, wk40_economo_ind);
             figure; SurfStatViewData(sign_vert_data_PMA, wk40, strcat(moments(mom), ' sign. PMA'));
             colormap([0.5 0.5 0.5; vik; 0.5 0.5 0.5]);
-            SurfStatColLim([-abs_lim, abs_lim]);
+            % SurfStatColLim([-abs_lim, abs_lim]);
+            % in the manuscript, we use the same colourscale limits as in
+            % figure 4 for the purpose of comparison. If you want to use
+            % limits based only on this data, use the line above
+            SurfStatColLim([-30.8513, 30.8513]); % limits of figure 4
         end
 
     end
