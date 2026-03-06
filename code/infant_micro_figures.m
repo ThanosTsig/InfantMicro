@@ -2,35 +2,39 @@ for init_project = 1
 
     GH           = '/Users/ttsigaras/Documents/GitHub'; % GitHub directory
     homeDir      = [GH '/InfantMicro'];
+    % directory of each participant's native microstructure profile csv
+    MPs_dir      = [homeDir '/data/native_MPs'];
+    % directory of vertex-wise Von Economo parcel indices
+    labels_dir_economo   = [homeDir '/data/native_economo_ind'];
+    % directory of vertex-wise Schaefer-200 parcel indices
+    labels_dir_schaefer200 = [homeDir '/data/native_schaefer200_ind'];
+    % directory of parcel-wise (Von Economo) cortical thickness
+    thick_dir    = [homeDir '/data/native_thick_economo'];
 
     wk40_tpl_dir = [homeDir '/tpl-week-40']; % week-40 template directory
 
-    % add paths for GitHub directories (munesoft, SurfStat toolbox and gifti
-    % toolbox)
-    addpath(genpath([GH '/munesoft']))
-    addpath(genpath([GH '/surfstat'])) 
+    % add paths for GitHub directories (gifti toolbox and scripts) 
     addpath(genpath([homeDir '/code']))
-    addpath(genpath([homeDir '/gifti']))
+    addpath(genpath([GH '/gifti']))
 
-    % load data
-    load([homeDir, '/dHCP_gen_table.mat'], 'final_table', 'final_table_avg');
-    load([homeDir, '/dHCP_parcel_MP.mat'], 'MP_dHCP_parc');
-    load([homeDir, '/age_variables.mat'], 'age_vars');
-    load([homeDir, '/dHCP_parcel_moments.mat'], 'dHCP_moments_parc');
-    load([homeDir, '/dHCP_gen_table_schaefer200.mat'], 'final_table_schaefer200', 'final_table_avg_schaefer200')
-    load([homeDir, '/dHCP_gen_table_no_twins.mat'], 'final_table_no_twins', 'final_table_avg_no_twins')
+    % load demographic data
+    demographics = readtable([homeDir '/data/nnsi01.txt']); % load demographics file
 
-    uparc_economo = unique(final_table.parcel); % unique Von Economo parcel indices
-    uparc_schaefer200 = unique(final_table_schaefer200.parcel); % unique Schaefer-200 parcel indices
-    uparc_schaefer200(1) = [];
-    excluded_indices_economo = [1, 15, 16, 17, 20, 21, 22, 23, 24, 25, 26, 45, ...
-        59, 60, 61, 64, 65, 66, 67, 68, 69, 70]; % non-cortical and limbic  parcel indices
+    depths = 1:12; % number of depths per profile
+    % defining valid parcels for each parcellation. Von Economo's
+    % parcellation includes Corpus Callosum parcels (#2 and #47), which are
+    % not assigned to any vertex, therefore although the official parcellation
+    % includes 90 parcels, there are only 88 unique parcel indices when
+    % extracting the unique indices from the label files. The below defined
+    % parcels indices are actually the positions of the parcels within the
+    % total number of parcels and not the actual indices
     total_num_parcels_economo = 88;
     total_num_parcels_schaefer200 = 201;
+    excluded_indices_economo = [1, 15, 16, 17, 20, 21, 22, 23, 24, 25, 26, 45, ...
+        59, 60, 61, 64, 65, 66, 67, 68, 69, 70]; % non-cortical and limbic  parcels
     valid_parcels_economo = setdiff(1:total_num_parcels_economo, ...
-        excluded_indices_economo); % cortical and non-limbic parcel indices
+        excluded_indices_economo); % cortical and non-limbic parcel
     valid_parcels_schaefer200 = 2:201;
-    depths = 1:12; % number of depths per profile
 
     % load week-40 pial surface
     wk40_lh_pial = gifti([wk40_tpl_dir '/week-40_hemi-left_space-dhcpSym_dens-32k_pial.surf.gii']);
@@ -47,17 +51,254 @@ for init_project = 1
     wk40_schaefer200_ind = [wk40_sch200_lh_ind.cdata; wk40_sch200_rh_ind.cdata];
 
     % load colour maps
-    load([GH '/munesoft/colourmaps/colorbrewer.mat'])
-    scicol = [GH '/munesoft/colourmaps/ScientificColourMaps7'];
+    load([homeDir '/resources/colourmaps/colorbrewer.mat'])
+    scicol = [homeDir '/resources/colourmaps/ScientificColourMaps7'];
     scicol_names = ["devon", "lajolla", "lapaz", "roma", "vik"];
     for ii = 1:length(scicol_names)
         load(strcat(scicol, '/', scicol_names(ii), '.mat'));    
     end
 
-   % load eigenmodes 2, 3 and 4
-    eigenmodes = readmatrix([homeDir '/resources/week-40_pial_emode_2-4.txt']);
+    % load eigenmodes 2, 3 and 4
+    eigenmodes = readmatrix([homeDir '/resources/week-40_pial_hemi-left_emode_2-4.txt']);
     % load previously used permutation indices
     load([homeDir '/resources/economo_spin_wk40.mat'], 'perm_id')
+
+end
+
+for preparing_data = 1
+
+    variables = {'src_subject_id', 'scan_validation', 'nscan_ga_at_birth_weeks', ...
+        'nscan_ga_at_scan_weeks', 'sex'};
+    filt_demographics = table();
+    
+    for sub = 1:height(demographics)
+        sub_id = demographics.src_subject_id{sub}; % subject ID
+        ses_id = num2str(demographics.scan_validation(sub)); % session ID
+    
+        MP_file_dir = fullfile(MPs_dir, [sub_id '_ses-' ses_id '_desc-MP.csv']);
+        left_label_file_dir_economo = fullfile(labels_dir_economo, [sub_id ...
+            '_ses-' ses_id '_hemi-left_desc-economo.label.gii']);
+        right_label_file_dir_economo = fullfile(labels_dir_economo, [sub_id ...
+            '_ses-' ses_id '_hemi-right_desc-economo.label.gii']);
+        
+        % if all 3 files exist, add subject to the filtered table
+        if isfile(MP_file_dir) && isfile(left_label_file_dir_economo) && ...
+                isfile(right_label_file_dir_economo)
+            filt_demographics = [filt_demographics; demographics(sub, variables)];
+        else
+            fprintf('Missing files for sub-%s_ses-%s.\n', sub_id, ses_id);
+        end
+    end
+
+    % remove subsequent scans of longitudinal participants
+    filt_demographics.scan_validation = double(filt_demographics.scan_validation);
+    filt_demographics = sortrows(filt_demographics, ...
+                             {'src_subject_id', 'scan_validation'});
+    [~, first_idx] = unique(filt_demographics.src_subject_id, 'stable');
+    filt_demographics = filt_demographics(first_idx, :);
+    filt_demographics.postnatal_age = filt_demographics.nscan_ga_at_scan_weeks ...
+        - filt_demographics.nscan_ga_at_birth_weeks; % calculate postnatal age at scan
+    % excluding participants with PNA > 7
+    filt_demographics(filt_demographics.postnatal_age > 7, :) = [];
+
+    MP_parc_economo = nan(length(depths), total_num_parcels_economo, height(filt_demographics));
+    MP_parc_schaefer200 = nan(length(depths), total_num_parcels_schaefer200, height(filt_demographics));
+    thick_parc_economo = nan(total_num_parcels_economo, height(filt_demographics));
+    for sub = 1:height(filt_demographics)
+        sub_id = filt_demographics.src_subject_id{sub}; % subject ID
+        ses_id = num2str(filt_demographics.scan_validation(sub)); % session ID
+        
+        MP_file_dir = fullfile(MPs_dir, [sub_id '_ses-' ses_id '_desc-MP.csv']);
+        thick_file_dir = fullfile(thick_dir, [sub_id '_ses-' ses_id '_desc-thickness_parc-economo.csv']);
+        left_label_file_dir_economo = fullfile(labels_dir_economo, ...
+            [sub_id '_ses-' ses_id '_hemi-left_desc-economo.label.gii']);
+        right_label_file_dir_economo = fullfile(labels_dir_economo, ...
+            [sub_id '_ses-' ses_id '_hemi-right_desc-economo.label.gii']);
+        left_label_file_dir_schaefer200 = fullfile(labels_dir_schaefer200, ...
+            [sub_id '_ses-' ses_id '_hemi-left_desc-Schaefer2018_7Networks_200.32k.label.gii']);
+        right_label_file_dir_schaefer200 = fullfile(labels_dir_schaefer200, ...
+            [sub_id '_ses-' ses_id '_hemi-right_desc-Schaefer2018_7Networks_200.32k.label.gii']);
+
+        MP = readmatrix(MP_file_dir); % read microstructure profiles
+        sub_thick_parc = readmatrix(thick_file_dir); % read parcellated cortical thickness
+        left_labels_economo = gifti(left_label_file_dir_economo);
+        right_labels_economo = gifti(right_label_file_dir_economo);
+        left_labels_schaefer200 = gifti(left_label_file_dir_schaefer200);
+        right_labels_schaefer200 = gifti(right_label_file_dir_schaefer200);
+        left_ind_economo = left_labels_economo.cdata;
+        % add 45 to the right hemisphere parcel indices to differentiate them from the left hemisphere ones
+        right_ind_economo = right_labels_economo.cdata + 45;
+        left_ind_schaefer200 = left_labels_schaefer200.cdata;
+        right_ind_schaefer200 = right_labels_schaefer200.cdata;
+        economo_ind = cat(1, left_ind_economo, right_ind_economo); % vertex-wise Von Economo parcel indices
+        schaefer200_ind = cat(1, left_ind_schaefer200, right_ind_schaefer200); % vertex-wise Schaefer-200 parcel indices
+
+        num_of_parc_economo = unique(economo_ind);
+        num_of_parc_schaefer200 = unique(schaefer200_ind);
+        if length(num_of_parc_economo) == 88
+            if length(num_of_parc_schaefer200) == 201
+                sub_MP_parc_economo = zeros(size(MP, 1), length(num_of_parc_economo));
+                sub_MP_parc_schaefer200 = zeros(size(MP, 1), length(num_of_parc_schaefer200));
+                MP(isinf(MP)) = NaN;
+    
+                % calculate the average intensity per parcel at each depth
+                for depth = 1:size(MP, 1)
+                    sub_MP_parc_economo(depth,:) = grpstats(MP(depth,:) , economo_ind);
+                    sub_MP_parc_schaefer200(depth,:) = grpstats(MP(depth,:) , schaefer200_ind);
+                end
+    
+                MP_parc_economo(:,:,sub) = sub_MP_parc_economo;
+                MP_parc_schaefer200(:,:,sub) = sub_MP_parc_schaefer200;
+                thick_parc_economo(:,sub) = sub_thick_parc;
+            else
+                fprintf('Subject %s session %s has wrong number of Schaefer parcels.\n', sub_id, ses_id);
+            end
+        else
+            fprintf('Subject %s session %s has wrong number of Von Economo parcels.\n', sub_id, ses_id);
+        end
+    end
+
+    moments_parc_economo = NaN(5, total_num_parcels_economo, size(MP_parc_economo, 3));
+    moments_parc_schaefer200 = NaN(5, total_num_parcels_schaefer200, size(MP_parc_schaefer200, 3));
+    for sub = 1:height(filt_demographics)
+        MP_economo = MP_parc_economo(:, :, sub);
+        MP_schaefer200 = MP_parc_schaefer200(:, :, sub);
+        MP_economo = round(MP_economo*100); % required for the calculate_moments() function to work
+        MP_schaefer200= round(MP_schaefer200*100); % required for the calculate_moments() function to work
+        % calculate the moments of this profile
+        moments_economo = calculate_moments(MP_economo);
+        moments_schaefer200 = calculate_moments(MP_schaefer200);
+        moments_parc_economo(:, :, sub) = moments_economo;
+        moments_parc_schaefer200(:, :, sub) = moments_schaefer200;
+    end
+    moments_parc_economo(1,:,:) = moments_parc_economo(1,:,:)/100;
+    moments_parc_schaefer200(1,:,:) = moments_parc_schaefer200(1,:,:)/100;
+    % exclude mean intensity, skewness and kurtosis from the moments
+    moments_parc_economo([1 4 5], :, :) = [];
+    moments_parc_schaefer200([1 4 5], :, :) = [];
+
+    % exclude twins. Twins/Triples have the string "AN", "BN", "CN"
+    % following the number in their subject ID, whereas singleton infants
+    % have the string "XX"
+    ids = string(filt_demographics.src_subject_id);
+    expression = "CC(?<group>\d{5})(?<twin_id>[A-Z]{2})";
+    tokens = regexp(ids, expression, 'names');
+    tokens = vertcat(tokens{:});
+    twin_id = string({tokens.twin_id}');
+    is_twin = twin_id ~= "XX";
+    filt_demographics_no_twins = filt_demographics(~is_twin,:);
+    moments_parc_no_twins = moments_parc_economo(:,:,~is_twin);
+    MP_parc_no_twins = MP_parc_economo(:,:,~is_twin);
+
+end
+
+for creating_gen_table = 1
+
+    GA = filt_demographics.nscan_ga_at_birth_weeks; % gestational age [weeks]
+    PNA = filt_demographics.postnatal_age; % postnatal age at scan [weeks]
+    PMA = filt_demographics.nscan_ga_at_scan_weeks; % postmenstrual age at scan [weeks]
+    sex = filt_demographics.sex; % sex
+    sub_id = filt_demographics.src_subject_id; % subject ID
+    ses_id = filt_demographics.scan_validation; % session ID
+
+    GA_no_twins = filt_demographics_no_twins.nscan_ga_at_birth_weeks; % gestational age [weeks]
+    PNA_no_twins = filt_demographics_no_twins.postnatal_age; % postnatal age at scan [weeks]
+    PMA_no_twins = filt_demographics_no_twins.nscan_ga_at_scan_weeks; % postmenstrual age at scan [weeks]
+    sex_no_twins = filt_demographics_no_twins.sex; % sex
+    sub_id_no_twins = filt_demographics_no_twins.src_subject_id; % subject ID
+    ses_id_no_twins = filt_demographics_no_twins.scan_validation; % session ID
+    
+    num_subjects = size(filt_demographics, 1);
+    num_subjects_no_twins = size(filt_demographics_no_twins, 1);
+    
+    % repeating entries, in order to match the number of parcels per subject
+    sub_id_rep_economo = repelem(sub_id, total_num_parcels_economo, 1);
+    ses_id_rep_economo = repelem(ses_id, total_num_parcels_economo, 1);
+    GA_rep_economo = repelem(GA, total_num_parcels_economo, 1);
+    PNA_rep_economo = repelem(PNA, total_num_parcels_economo, 1);
+    PMA_rep_economo = repelem(PMA, total_num_parcels_economo, 1);
+    sex_rep_economo = repelem(sex, total_num_parcels_economo, 1);
+    sub_id_rep_no_twins = repelem(sub_id_no_twins, total_num_parcels_economo, 1);
+    ses_id_rep_no_twins = repelem(ses_id_no_twins, total_num_parcels_economo, 1);
+    GA_rep_no_twins = repelem(GA_no_twins, total_num_parcels_economo, 1);
+    PNA_rep_no_twins = repelem(PNA_no_twins, total_num_parcels_economo, 1);
+    PMA_rep_no_twins = repelem(PMA_no_twins, total_num_parcels_economo, 1);
+    sex_rep_no_twins = repelem(sex_no_twins, total_num_parcels_economo, 1);
+    sub_id_rep_schaefer200 = repelem(sub_id, total_num_parcels_schaefer200, 1);
+    ses_id_rep_schaefer200 = repelem(ses_id, total_num_parcels_schaefer200, 1);
+    GA_rep_schaefer200 = repelem(GA, total_num_parcels_schaefer200, 1);
+    PNA_rep_schaefer200 = repelem(PNA, total_num_parcels_schaefer200, 1);
+    PMA_rep_schaefer200 = repelem(PMA, total_num_parcels_schaefer200, 1);
+    sex_rep_schaefer200 = repelem(sex, total_num_parcels_schaefer200, 1);
+    
+    % multiplying the parcel indices with the number of subjects
+    parcel_id_rep_economo = repmat(unique(wk40_economo_ind), num_subjects, 1);
+    parcel_id_rep_no_twins = repmat(unique(wk40_economo_ind), num_subjects_no_twins, 1);
+    parcel_id_rep_schaefer200 = repmat(unique(wk40_schaefer200_ind), num_subjects, 1);
+    
+    % reshaping the moments and cortical thickness to match the table's structure
+    moments_rep_economo = reshape(moments_parc_economo, [2, total_num_parcels_economo * num_subjects])';
+    thickness_rep = reshape(thick_parc_economo, [total_num_parcels_economo * num_subjects,1]);
+    moments_rep_no_twins = reshape(moments_parc_no_twins, [2, total_num_parcels_economo * num_subjects_no_twins])';
+    moments_rep_schaefer200 = reshape(moments_parc_schaefer200, [2, total_num_parcels_schaefer200 * num_subjects])';
+    
+    % creating the tables
+    gen_table_economo = table(sub_id_rep_economo, ses_id_rep_economo, GA_rep_economo, ...
+        PMA_rep_economo, PNA_rep_economo, sex_rep_economo, parcel_id_rep_economo, ...
+        thickness_rep, moments_rep_economo(:,1), moments_rep_economo(:,2), ...
+        'VariableNames', {'subject_id', 'session_id', 'GA', 'PMA', 'PNA', ...
+        'sex', 'parcel', 'thick', 'cog', 'variance'});
+    gen_table_no_twins = table(sub_id_rep_no_twins, ses_id_rep_no_twins, ...
+        GA_rep_no_twins, PMA_rep_no_twins, PNA_rep_no_twins, sex_rep_no_twins, ...
+        parcel_id_rep_no_twins, moments_rep_no_twins(:,1), moments_rep_no_twins(:,2), ...
+        'VariableNames', {'subject_id', 'session_id', 'GA', 'PMA', 'PNA', ...
+        'sex', 'parcel', 'cog', 'variance'});
+    gen_table_schaefer200 = table(sub_id_rep_schaefer200, ses_id_rep_schaefer200, ...
+        GA_rep_schaefer200, PMA_rep_schaefer200, PNA_rep_schaefer200, sex_rep_schaefer200, ...
+        parcel_id_rep_schaefer200, moments_rep_schaefer200(:,1), moments_rep_schaefer200(:,2), ...
+        'VariableNames', {'subject_id', 'session_id', 'GA', 'PMA', 'PNA', ...
+        'sex', 'parcel', 'cog', 'variance'});
+
+    % parcels to exclude from the Von Economo general table
+    % (i.e. cortical wall, limbic and hippocampal lobes)
+    exclude_parcels = [1, 16, 17, 18, 21, 22, 23, 24, 25, 26, 27, ...
+                   46, 61, 62, 63, 66, 67, 68, 69, 70, 71, 72];
+
+    % excluding subjects with a PNA lower than 7 weeks and also
+    % parcels belonging to the cortical wall, hippocampal and limbic lobes
+    gen_table_economo = gen_table_economo(gen_table_economo.PNA <= 7 & ...
+                                ~ismember(gen_table_economo.parcel, exclude_parcels), :);
+    gen_table_economo.sex = categorical(gen_table_economo.sex); % making sex a categorical variable
+    gen_table_no_twins = gen_table_no_twins(gen_table_no_twins.PNA <= 7 & ...
+                                ~ismember(gen_table_no_twins.parcel, exclude_parcels), :);
+    gen_table_no_twins.sex = categorical(gen_table_no_twins.sex); % making sex a categorical variable
+    gen_table_schaefer200.sex = categorical(gen_table_schaefer200.sex); % making sex a categorical variable
+
+    % averaging central moments across subjects
+    group_vars = {'subject_id', 'session_id', 'GA', 'PMA', 'PNA', 'sex'};
+    avg_vars1 = {'thick', 'cog', 'variance'};
+    avg_vars2 = {'cog', 'variance'};
+    gen_table_avg_economo = groupsummary(gen_table_economo, group_vars, 'mean', avg_vars1);
+    gen_table_avg_no_twins = groupsummary(gen_table_no_twins, group_vars, 'mean', avg_vars2);
+    gen_table_avg_schaefer200 = groupsummary(gen_table_schaefer200, group_vars, 'mean', avg_vars2);
+    for i = 1:numel(avg_vars1)
+        old_name = ['mean_' avg_vars1{i}];
+        newName = avg_vars1{i};
+        gen_table_avg_economo.Properties.VariableNames{old_name} = newName;
+    end
+    for i = 1:numel(avg_vars2)
+        old_name = ['mean_' avg_vars2{i}];
+        newName = avg_vars2{i};
+        gen_table_avg_no_twins.Properties.VariableNames{old_name} = newName;
+        gen_table_avg_schaefer200.Properties.VariableNames{old_name} = newName;
+    end
+    gen_table_avg_economo.GroupCount = [];
+    gen_table_avg_no_twins.GroupCount = [];
+    gen_table_avg_schaefer200.GroupCount = [];
+
+    uparc_economo = unique(gen_table_economo.parcel); % unique Von Economo parcel indices
+    uparc_schaefer200 = unique(gen_table_schaefer200.parcel); % unique Schaefer-200 parcel indices
+    uparc_schaefer200(1) = [];
 
 end
 
@@ -65,10 +306,10 @@ for figure_1 = 1
 
     for panel_A = 1
 
-        GA = final_table_avg.GA;
-        PNA = final_table_avg.PNA;
-        PMA = final_table_avg.PMA;
-        sex = final_table_avg.sex;
+        GA = gen_table_avg_economo.GA;
+        PNA = gen_table_avg_economo.PNA;
+        PMA = gen_table_avg_economo.PMA;
+        sex = gen_table_avg_economo.sex;
     
         [~, sort_idx] = sortrows([PMA, PNA]); % sort first by PMA, then by PNA
         GA_sorted = GA(sort_idx);
@@ -104,11 +345,15 @@ for figure_1 = 1
         % plot a scatter plot of PNA against GA, coloured by sex
         figure('units','centimeters','outerposition',[0 0 21 20]); 
         hold on;
-        scatter(final_table_avg.GA(final_table_avg.sex == 'F'), final_table_avg.PNA(final_table_avg.sex == 'F'), 50, 'filled', 'MarkerFaceColor', lajolla(75,:));
-        scatter(final_table_avg.GA(final_table_avg.sex == 'M'), final_table_avg.PNA(final_table_avg.sex == 'M'), 50, 'filled', 'MarkerFaceColor', devon(80,:));
+        scatter(gen_table_avg_economo.GA(gen_table_avg_economo.sex == 'F'), ...
+            gen_table_avg_economo.PNA(gen_table_avg_economo.sex == 'F'), ...
+            50, 'filled', 'MarkerFaceColor', lajolla(75,:));
+        scatter(gen_table_avg_economo.GA(gen_table_avg_economo.sex == 'M'), ...
+            gen_table_avg_economo.PNA(gen_table_avg_economo.sex == 'M'), ...
+            50, 'filled', 'MarkerFaceColor', devon(80,:));
         set(gca, 'FontSize', 14);
-        ylim([0 max(final_table_avg.PNA)]);
-        xlim([min(final_table_avg.GA) max(final_table_avg.GA)])
+        ylim([0 max(gen_table_avg_economo.PNA)]);
+        xlim([min(gen_table_avg_economo.GA) max(gen_table_avg_economo.GA)])
         grid off;
         hold off;
 
@@ -116,8 +361,8 @@ for figure_1 = 1
         variables = {'GA', 'PNA'};
         for i = 1:length(variables)
             var = variables{i};
-            [f1, xi1] = ksdensity(final_table_avg.(var)(final_table_avg.sex == 'M'), 'Bandwidth', 0.4);
-            [f2, xi2] = ksdensity(final_table_avg.(var)(final_table_avg.sex == 'F'), 'Bandwidth', 0.4);
+            [f1, xi1] = ksdensity(gen_table_avg_economo.(var)(gen_table_avg_economo.sex == 'M'), 'Bandwidth', 0.4);
+            [f2, xi2] = ksdensity(gen_table_avg_economo.(var)(gen_table_avg_economo.sex == 'F'), 'Bandwidth', 0.4);
             figure('units','centimeters','outerposition',[0 0 28 8]); 
             hold on;
             plot(xi1, f1, 'Color', devon(80,:), 'LineWidth', 2);
@@ -125,7 +370,7 @@ for figure_1 = 1
             plot(xi2, f2, 'Color', lajolla(75,:), 'LineWidth', 2);
             fill(xi2, f2, lajolla(75,:), 'FaceAlpha', 0.3);
             set(gca, 'XTick', [], 'YTick', []);
-            xlim([min(final_table_avg.(var)) max(final_table_avg.(var))]);
+            xlim([min(gen_table_avg_economo.(var)) max(gen_table_avg_economo.(var))]);
             grid on;
             hold off;
         end
@@ -141,7 +386,7 @@ for figure_2 = 1
         % calculate and plot the average profile across all participants
         % and parcels
         depth = 1:12;
-        avg_profile = mean(MP_dHCP_parc(:, :, :), [2, 3]);
+        avg_profile = mean(MP_parc_economo(:, :, :), [2, 3]);
         figure('units','centimeters','outerposition',[0 0 10 22]); 
         plot(avg_profile, -depth, 'Color', 'k', 'LineWidth', 1.5);
         set(gca, 'YTick', []);
@@ -153,13 +398,13 @@ for figure_2 = 1
     for panel_B = 1
 
         cmap = flipud(roma);
-        nsubs = size(MP_dHCP_parc, 3);
+        nsubs = size(MP_parc_economo, 3);
         nbins = 100;
 
         for m = 1:2
-            profiles_reshaped = reshape(MP_dHCP_parc, [12, ...
+            profiles_reshaped = reshape(MP_parc_economo, [12, ...
                 total_num_parcels_economo * nsubs]); % reshape profile array
-            moments_reshaped = reshape(dHCP_moments_parc(m,:,:), ...
+            moments_reshaped = reshape(moments_parc_economo(m,:,:), ...
                 [total_num_parcels_economo * nsubs, 1]); % flatten moment array
     
             if m == 1
@@ -199,7 +444,7 @@ for figure_2 = 1
 
         moment = ["Centre of gravity", "Variance"];
         % calculate average moments per parcel
-        avg_moments = mean(dHCP_moments_parc, 3);
+        avg_moments = mean(moments_parc_economo, 3);
         % replace non-cortical and limbic parcel values with -100 for
         % visualisation purposes
         avg_moments(:, ~ismember(1:88, valid_parcels_economo)) = -100;
@@ -226,10 +471,10 @@ for figure_3 = 1
         for mom = 1:length(moments)
             if mom == 1
                 cog_sign_parcel_data_PMA = moment_age_model("cog", "PMA", ...
-                    final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
+                    gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
             else
                 var_sign_parcel_data_PMA = moment_age_model("variance", "PMA", ...
-                    final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
+                    gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
             end
         end
     
@@ -263,7 +508,7 @@ for figure_3 = 1
     for panel_B_profile_plots = 1
 
         moments = ["Centre of gravity", "Variance"];
-        PMA = final_table_avg.PMA;
+        PMA = gen_table_avg_economo.PMA;
         min_PMA = min(PMA);
         max_PMA = max(PMA);
         % define a window size of 1.5 weeks and 50% overlap
@@ -274,10 +519,10 @@ for figure_3 = 1
         for mom = 1:length(moments)
             if mom == 1
                 sign_parcel_data_PMA = moment_age_model("cog", "PMA", ...
-                    final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
+                    gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
             else
                 sign_parcel_data_PMA = moment_age_model("variance", "PMA", ...
-                    final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
+                    gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
             end
     
             % isolate the parcel-indices with the maximum/minimum significant effects
@@ -295,9 +540,9 @@ for figure_3 = 1
     
             % isolate the MPs of the parcels with the first/second
             % maximum/minimum significant effects
-            max_change_profs = MP_dHCP_parc(:,[max_change_parc ...
+            max_change_profs = MP_parc_economo(:,[max_change_parc ...
                 sec_max_change_parc],:);
-            min_change_profs = MP_dHCP_parc(:,[min_change_parc ...
+            min_change_profs = MP_parc_economo(:,[min_change_parc ...
                 sec_min_change_parc],:);
             profiles_to_plot = [max_change_profs min_change_profs];
         
@@ -371,7 +616,7 @@ for figure_3 = 1
                 depth_corrs = zeros(length(depths),1);
                 % calculate correlation of intensities with PMA at each depth
                 for depth = 1:length(depths)
-                    depth_corrs(depth) = corr(squeeze(mean(profiles(depth,:,:),2)), final_table_avg.PMA);
+                    depth_corrs(depth) = corr(squeeze(mean(profiles(depth,:,:),2)), gen_table_avg_economo.PMA);
                 end
                 
                 % plot depth-wise correlations as a scatter plot
@@ -397,10 +642,10 @@ for figure_4 = 1
         for mom = 1:length(moments)
             if mom == 1
                 cog_sign_parcel_data = moment_age_model("cog", ["GA", "PNA"], ...
-                    final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
+                    gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
             else
                 var_sign_parcel_data = moment_age_model("variance", ["GA", "PNA"], ...
-                    final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
+                    gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
             end
         end
     
@@ -429,7 +674,11 @@ for figure_4 = 1
             sign_vert_data_GA = BoSurfStatMakeParcelData(sign_parcel_data_GA, wk40, wk40_economo_ind);
             figure; SurfStatViewData(sign_vert_data_GA, wk40, strcat(moments(mom), ' sign. GA'));
             colormap([0.5 0.5 0.5; vik; 0.5 0.5 0.5]);
-            SurfStatColLim([-abs_lim, abs_lim]);
+            % SurfStatColLim([-abs_lim, abs_lim]);
+            % in the manuscript, we use the same colourscale limits as the
+            % figures of the independent models for the purpose of comparison.
+            % If you want to use limits based only on this data, use the line above
+            SurfStatColLim([-30.8513, 30.8513]); % limits of independent models
         end
     end
 
@@ -439,14 +688,14 @@ for figure_4 = 1
         for mom = 1:length(moments)
             if mom == 1
                 cog_sign_parcel_data_GA = moment_age_model("cog", "GA", ...
-                    final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
+                    gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
                 cog_sign_parcel_data_PNA = moment_age_model("cog", "PNA", ...
-                    final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
+                    gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
             else
                 var_sign_parcel_data_GA = moment_age_model("variance", "GA", ...
-                    final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
+                    gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
                 var_sign_parcel_data_PNA = moment_age_model("variance", "PNA", ...
-                    final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
+                    gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 1, 0);
             end
         end
     
@@ -516,14 +765,14 @@ for figure_5 = 1
         for mom = 1:length(moments)
             if mom == 1
                 cog_parcel_data_PMA = moment_age_model("cog", "PMA", ...
-                    final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                    gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
                 cog_parcel_data_GA_PNA = moment_age_model("cog", ["GA", "PNA"], ...
-                    final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                    gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             else
                 var_parcel_data_PMA = moment_age_model("variance", "PMA", ...
-                    final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                    gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
                 var_parcel_data_GA_PNA = moment_age_model("variance", ["GA", "PNA"], ...
-                    final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                    gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             end
         end
         t_maps = {cog_parcel_data_PMA, var_parcel_data_PMA, ...
@@ -700,14 +949,14 @@ for supp_figure_1 = 1
     for mom = 1:length(moments)
         if mom == 1
             cog_parcel_data_PMA = moment_age_model("cog", "PMA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             cog_parcel_data_PMA_no_twins = moment_age_model("cog", "PMA", ...
-                final_table_no_twins, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_no_twins, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
         else
             var_parcel_data_PMA = moment_age_model("variance", "PMA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             var_parcel_data_PMA_no_twins = moment_age_model("variance", "PMA", ...
-                final_table_no_twins, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_no_twins, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
         end
     end
 
@@ -774,14 +1023,14 @@ for supp_figures_2_3 = 1
     for mom = 1:length(moments)
         if mom == 1
             cog_parcel_data = moment_age_model("cog", ["GA", "PNA"], ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             cog_parcel_data_no_twins = moment_age_model("cog", ["GA", "PNA"], ...
-                final_table_no_twins, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_no_twins, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
         else
             var_parcel_data = moment_age_model("variance", ["GA", "PNA"], ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             var_parcel_data_no_twins = moment_age_model("variance", ["GA", "PNA"], ...
-                final_table_no_twins, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_no_twins, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
         end
     end
 
@@ -882,25 +1131,25 @@ for supp_figure_4 = 1
     for mom = 1:length(moments)
         if mom == 1
             cog_parcel_data_PMA = moment_age_model("cog", "PMA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             cog_parcel_data_PMA_no_EPT = moment_age_model("cog", "PMA", ...
-                final_table(final_table.GA >= 28, :), uparc_economo, ...
+                gen_table_economo(gen_table_economo.GA >= 28, :), uparc_economo, ...
                 total_num_parcels_economo, valid_parcels_economo, 0, 0);
             cog_parcel_data_GA_PNA = moment_age_model("cog", ["GA", "PNA"], ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             cog_parcel_data_GA_PNA_no_EPT = moment_age_model("cog", ["GA", "PNA"], ...
-                final_table(final_table.GA >= 28, :), uparc_economo, ...
+                gen_table_economo(gen_table_economo.GA >= 28, :), uparc_economo, ...
                 total_num_parcels_economo, valid_parcels_economo, 0, 0);
         else
             var_parcel_data_PMA = moment_age_model("variance", "PMA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             var_parcel_data_PMA_no_EPT = moment_age_model("variance", "PMA", ...
-                final_table(final_table.GA >= 28, :), uparc_economo, ...
+                gen_table_economo(gen_table_economo.GA >= 28, :), uparc_economo, ...
                 total_num_parcels_economo, valid_parcels_economo, 0, 0);
             var_parcel_data_GA_PNA = moment_age_model("variance", ["GA", "PNA"], ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             var_parcel_data_GA_PNA_no_EPT = moment_age_model("variance", ["GA", "PNA"], ...
-                final_table(final_table.GA >= 28, :), uparc_economo, ...
+                gen_table_economo(gen_table_economo.GA >= 28, :), uparc_economo, ...
                 total_num_parcels_economo, valid_parcels_economo, 0, 0);
         end
     end
@@ -1021,25 +1270,25 @@ for supp_figure_5 = 1
     for mom = 1:length(moments)
         if mom == 1
             cog_parcel_data_PMA = moment_age_model("cog", "PMA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             cog_parcel_data_PMA_no_VPT = moment_age_model("cog", "PMA", ...
-                final_table(final_table.GA >= 32, :), uparc_economo, ...
+                gen_table_economo(gen_table_economo.GA >= 32, :), uparc_economo, ...
                 total_num_parcels_economo, valid_parcels_economo, 0, 0);
             cog_parcel_data_GA_PNA = moment_age_model("cog", ["GA", "PNA"], ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             cog_parcel_data_GA_PNA_no_VPT = moment_age_model("cog", ["GA", "PNA"], ...
-                final_table(final_table.GA >= 32, :), uparc_economo, ...
+                gen_table_economo(gen_table_economo.GA >= 32, :), uparc_economo, ...
                 total_num_parcels_economo, valid_parcels_economo, 0, 0);
         else
             var_parcel_data_PMA = moment_age_model("variance", "PMA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             var_parcel_data_PMA_no_VPT = moment_age_model("variance", "PMA", ...
-                final_table(final_table.GA >= 32, :), uparc_economo, ...
+                gen_table_economo(gen_table_economo.GA >= 32, :), uparc_economo, ...
                 total_num_parcels_economo, valid_parcels_economo, 0, 0);
             var_parcel_data_GA_PNA = moment_age_model("variance", ["GA", "PNA"], ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             var_parcel_data_GA_PNA_no_VPT = moment_age_model("variance", ["GA", "PNA"], ...
-                final_table(final_table.GA >= 32, :), uparc_economo, ...
+                gen_table_economo(gen_table_economo.GA >= 32, :), uparc_economo, ...
                 total_num_parcels_economo, valid_parcels_economo, 0, 0);
         end
     end
@@ -1160,25 +1409,25 @@ for supp_figure_6 = 1
     for mom = 1:length(moments)
         if mom == 1
             cog_parcel_data_PMA = moment_age_model("cog", "PMA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             cog_parcel_data_PMA_no_PT = moment_age_model("cog", "PMA", ...
-                final_table(final_table.GA >= 37, :), uparc_economo, ...
+                gen_table_economo(gen_table_economo.GA >= 37, :), uparc_economo, ...
                 total_num_parcels_economo, valid_parcels_economo, 0, 0);
             cog_parcel_data_GA_PNA = moment_age_model("cog", ["GA", "PNA"], ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             cog_parcel_data_GA_PNA_no_PT = moment_age_model("cog", ["GA", "PNA"], ...
-                final_table(final_table.GA >= 37, :), uparc_economo, ...
+                gen_table_economo(gen_table_economo.GA >= 37, :), uparc_economo, ...
                 total_num_parcels_economo, valid_parcels_economo, 0, 0);
         else
             var_parcel_data_PMA = moment_age_model("variance", "PMA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             var_parcel_data_PMA_no_PT = moment_age_model("variance", "PMA", ...
-                final_table(final_table.GA >= 37, :), uparc_economo, ...
+                gen_table_economo(gen_table_economo.GA >= 37, :), uparc_economo, ...
                 total_num_parcels_economo, valid_parcels_economo, 0, 0);
             var_parcel_data_GA_PNA = moment_age_model("variance", ["GA", "PNA"], ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             var_parcel_data_GA_PNA_no_PT = moment_age_model("variance", ["GA", "PNA"], ...
-                final_table(final_table.GA >= 37, :), uparc_economo, ...
+                gen_table_economo(gen_table_economo.GA >= 37, :), uparc_economo, ...
                 total_num_parcels_economo, valid_parcels_economo, 0, 0);
         end
     end
@@ -1295,15 +1544,15 @@ for supp_figure_7 = 1
     for mom = 1:length(moments)
         if mom == 1
             cog_parcel_data_PMA = moment_age_model("cog", "PMA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             cog_parcel_data_PMA_schaefer200 = moment_age_model("cog", "PMA", ...
-                final_table_schaefer200, uparc_schaefer200, ...
+                gen_table_schaefer200, uparc_schaefer200, ...
                 total_num_parcels_schaefer200, valid_parcels_schaefer200, 0, 0);
         else
             var_parcel_data_PMA = moment_age_model("variance", "PMA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             var_parcel_data_PMA_schaefer200 = moment_age_model("variance", "PMA", ...
-                final_table_schaefer200, uparc_schaefer200, ...
+                gen_table_schaefer200, uparc_schaefer200, ...
                 total_num_parcels_schaefer200, valid_parcels_schaefer200, 0, 0);
         end
     end
@@ -1372,15 +1621,15 @@ for supp_figure_8_9 = 1
     for mom = 1:length(moments)
         if mom == 1
             cog_parcel_data = moment_age_model("cog", ["GA", "PNA"], ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             cog_parcel_data_schaefer200 = moment_age_model("cog", ["GA", "PNA"], ...
-                final_table_schaefer200, uparc_schaefer200, ...
+                gen_table_schaefer200, uparc_schaefer200, ...
                 total_num_parcels_schaefer200, valid_parcels_schaefer200, 0, 0);
         else
             var_parcel_data = moment_age_model("variance", ["GA", "PNA"], ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             var_parcel_data_schaefer200 = moment_age_model("variance", ["GA", "PNA"], ...
-                final_table_schaefer200, uparc_schaefer200, ...
+                gen_table_schaefer200, uparc_schaefer200, ...
                 total_num_parcels_schaefer200, valid_parcels_schaefer200, 0, 0);
         end
     end
@@ -1477,9 +1726,9 @@ for supp_figure_10 = 1
 
     min_val = 0.7;
     max_val = 2.1;
-    for depth = 1:height(MP_dHCP_parc)
+    for depth = 1:height(MP_parc_economo)
         % average intensities per parcel for each depth
-        avg_intensities = mean(MP_dHCP_parc(depth, :, :), 3);
+        avg_intensities = mean(MP_parc_economo(depth, :, :), 3);
         % mask non-cortical and limbic parcels
         avg_intensities(~ismember(1:88, valid_parcels_economo)) = -100;
         vert_avg_intensities = BoSurfStatMakeParcelData(avg_intensities, wk40, wk40_economo_ind);
@@ -1497,14 +1746,14 @@ for supp_figure_11 = 1
     for mom = 1:length(moments)
         if mom == 1
             cog_parcel_data_GA = moment_age_model("cog", "GA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             cog_parcel_data_PNA = moment_age_model("cog", "PNA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
         else
             var_parcel_data_GA = moment_age_model("variance", "GA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             var_parcel_data_PNA = moment_age_model("variance", "PNA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
         end
     end
 
@@ -1553,14 +1802,14 @@ for supp_figure_12 = 1
     for mom = 1:length(moments)
         if mom == 1
             cog_parcel_data = moment_age_model("cog", "PMA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             cog_parcel_data_thick_corr = moment_age_model("cog", "PMA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 1);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 1);
         else
             var_parcel_data = moment_age_model("variance", "PMA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             var_parcel_data_thick_corr = moment_age_model("variance", "PMA", ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 1);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 1);
         end
     end
 
@@ -1626,14 +1875,14 @@ for supp_figure_13_14 = 1
     for mom = 1:length(moments)
         if mom == 1
             cog_parcel_data = moment_age_model("cog", ["GA", "PNA"], ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             cog_parcel_data_thick_corr = moment_age_model("cog", ["GA", "PNA"], ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 1);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 1);
         else
             var_parcel_data = moment_age_model("variance", ["GA", "PNA"], ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 0);
             var_parcel_data_thick_corr = moment_age_model("variance", ["GA", "PNA"], ...
-                final_table, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 1);
+                gen_table_economo, uparc_economo, total_num_parcels_economo, valid_parcels_economo, 0, 1);
         end
     end
 
