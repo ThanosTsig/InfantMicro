@@ -137,7 +137,10 @@ The code for generating the supplementary figures is described below.
     Precomputed spin permutation indices used for spatial permutation testing.
     
   - `week-40_pial_emode_2-4.txt`
-    Geometric eigenmodes (2nd-4th) computed by applying the Laplace-Beltrami operator (LBO) to the surface mesh of a population-average infant neocortex ("dhcpSym" 40-week template; [Williams et al., 2023](https://www.nature.com/articles/s41562-023-01542-8)), using code provided by [Pang et al. (2023)](https://www.nature.com/articles/s41586-023-06098-1).
+    Precomputed geometric eigenmodes (2nd-4th) of the cortical surface of the "dhcpSym" 40-week population-average infant template [Williams et al., 2023](https://www.nature.com/articles/s41562-023-01542-8).
+    These eigenmodes were obtained by applying the Laplace-Beltrami operator (LBO) to the surface mesh using code provided by [Pang et al. (2023)](https://www.nature.com/articles/s41586-023-06098-1).
+    The file contains the vertex-wise values of the second to forth eigenmodes and can be used to investigate large-scale spatial patterns of cortical organisation or to relate cortical maps to geometric modes of the surface.
+    They can be reused directly for analyses performed on the dhcpSym 40-week surface.
     
   - `colourmaps/`
     All colourmaps used for generating the figures in the manuscript.
