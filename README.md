@@ -17,8 +17,6 @@ Note that this script is tailored to analyses using the **Von Economo parcellati
 
 Below is a description of each section.
 
----
-
 ### Initialisation and data preparation
 
 - **`init_project`**
