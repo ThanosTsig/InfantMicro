@@ -62,7 +62,9 @@ Below is a description of each section.
   Calculate and plot the average microstructure profile across all participants and parcels.
   
 - **`panel_B`**
-  Sort parcel-wise profiles according to each central moment (centre of gravity and variance) and plot them by increasing central moment in two separate plots.
+  Filter parcel-wise profiles using arbitrary thresholds of each central moment value.
+  Divide the profiles into 100 bins based on the moment value.
+  Compute the average microstructure profile within each bin and plot them in increasing order of the corresponding central moment.
   
 - **`panel_C`**
   Compute and plot the average central moment values for each parcel across all participants.
@@ -75,7 +77,10 @@ Below is a description of each section.
   
 - **`panel_B_profile_plots`**
   Repeat process of panel A and identify parcels with the two highest and two lowest t-values for each model.
-  Isolate microstructure profiles from these parcels across participants and plot the sorted by PMA.
+  Isolate microstructure profiles from these parcels across participants.
+  Apply a sliding window approach along the PMA range of the participants (window width = 1.5 weeks; 50% overlap).
+  For each window, compute the average profile across participants for each of the two parcels with the highest and two lowest t-values of each model.
+  Plot the resulting averaged profiles sorted by PMA.
   
 - **`panel_B_scatter_plots`**
   Compute the correlation between T1w/T2w intensity and PMA at each cortical depth for the selected parcels (those used in the profile plots).
