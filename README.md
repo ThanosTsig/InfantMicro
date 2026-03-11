@@ -155,9 +155,6 @@ The code for generating the supplementary figures is described below.
     Includes the week-40 pial surface, as well as the Von Economo's and Schaefer-200's week-40 template vertex-wise parcel indices.
 
   - `S1_Data.xlsx`
-    Precomputed data to replicate the generation of figure 5, panel B. The first sheet within the file contains the correlation between the t-maps of each age variable and moment with each of the three eigenmodes (2-4), as well as their permutation p-values and their 95% null intervals. The second sheet contains the parcel-wise t-values of the linear models with each moment as response variable and each age variable as predictor. -100 values are assigned to non-cortical and limbic parcels and no significance threshold was applied to these values.
-    *Note: if you want to compute the correlations of the t-maps with the eigenmodes using the values of the second sheet instead of generating them from scratch using the above mentioned script (e.g. if you don't have access to the individual-level data), please remember to replace the -100 values with NaN.
-
     This file contains precomputed values required to reproduce **Figure 5B**.
     - **Sheet 1** contains the correlations between the parcel-wise t-maps (for each age variable and central moment) and each of the three geometric eigenmodes (eigenmodes 2–4). The sheet also includes the associated permutation p-values and the 95% null distribution intervals (2.5th and 97.5th percentiles).
     - **Sheet 2** contains the parcel-wise t-values of the linear models used in the analysis, with each central moment as the response variable and each age variable as the predictor.  
