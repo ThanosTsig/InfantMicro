@@ -62,7 +62,9 @@ Below is a description of each section.
   Calculate and plot the average microstructure profile across all participants and parcels.
   
 - **`panel_B`**
-  Sort parcel-wise profiles according to each central moment (centre of gravity and variance) and plot them by increasing central moment in two separate plots.
+  Filter parcel-wise profiles using arbitrary thresholds of each central moment value.
+  Divide the profiles into 100 bins based on the moment value.
+  Compute the average microstructure profile within each bin and plot them in increasing order of the corresponding central moment.
   
 - **`panel_C`**
   Compute and plot the average central moment values for each parcel across all participants.
@@ -75,7 +77,10 @@ Below is a description of each section.
   
 - **`panel_B_profile_plots`**
   Repeat process of panel A and identify parcels with the two highest and two lowest t-values for each model.
-  Isolate microstructure profiles from these parcels across participants and plot the sorted by PMA.
+  Isolate microstructure profiles from these parcels across participants.
+  Apply a sliding window approach along the PMA range of the participants (window width = 1.5 weeks; 50% overlap).
+  For each window, compute the average profile across participants for each of the two parcels with the highest and two lowest t-values of each model.
+  Plot the resulting averaged profiles sorted by PMA.
   
 - **`panel_B_scatter_plots`**
   Compute the correlation between T1w/T2w intensity and PMA at each cortical depth for the selected parcels (those used in the profile plots).
@@ -137,7 +142,10 @@ The code for generating the supplementary figures is described below.
     Precomputed spin permutation indices used for spatial permutation testing.
     
   - `week-40_pial_emode_2-4.txt`
-    Geometric eigenmodes (2nd-4th) computed by applying the Laplace-Beltrami operator (LBO) to the surface mesh of a population-average infant neocortex ("dhcpSym" 40-week template; [Williams et al., 2023](https://www.nature.com/articles/s41562-023-01542-8)), using code provided by [Pang et al. (2023)](https://www.nature.com/articles/s41586-023-06098-1).
+    Precomputed geometric eigenmodes (2nd-4th) of the cortical surface of the "dhcpSym" 40-week population-average infant template [Williams et al., 2023](https://www.nature.com/articles/s41562-023-01542-8).
+    These eigenmodes were obtained by applying the Laplace-Beltrami operator (LBO) to the surface mesh using code provided by [Pang et al. (2023)](https://www.nature.com/articles/s41586-023-06098-1).
+    The file contains the vertex-wise values of the second to forth eigenmodes and can be used to investigate large-scale spatial patterns of cortical organisation or to relate cortical maps to geometric modes of the surface.
+    They can be reused directly for analyses performed on the dhcpSym 40-week surface.
     
   - `colourmaps/`
     All colourmaps used for generating the figures in the manuscript.
