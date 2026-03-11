@@ -85,7 +85,7 @@ Below is a description of each section.
 - **`panel_B_scatter_plots`**
   Compute the correlation between T1w/T2w intensity and PMA at each cortical depth for the selected parcels (those used in the profile plots).
   Plot them as scatter plots of depth against correlation.
-  *Note: this section requires the profile plot section to be run first.
+  **Note:** this section requires the profile plot section to be run first.
 
 ### Figure 4
 
@@ -101,7 +101,7 @@ Below is a description of each section.
 
 - **`panel_A`**
   Plot the first four geometric eigenmodes on the wk40 surface.
-  *Note: the first eigenmode is spatially uniform by construction
+  **Note:** the first eigenmode is spatially uniform by construction
 
 - **`panel_B`**
   Fit linear models (`moment ~ PMA + sex` and `moment ~ GA + PNA + sex`) without applying significance filtering.
@@ -110,7 +110,7 @@ Below is a description of each section.
   Compute correlation between the t-maps and eigenmodes.
   Derive permutation p-values and 95% null intervals (2.5th-97.5th percentiles) from the spun maps.
   Visualise each correlation between the original t-maps and the three eigenmodes in scatter plots, including whiskers for null intervals and significance markers (* p < 0.05,  ** p < 0.01).
-  *Note: the surface plots below the scatter plots correspond to the t-maps generated in figures 3 and 4 without significance filtering. The code to generate these is not repeated in this section.
+  **Note:** the surface plots below the scatter plots correspond to the t-maps generated in figures 3 and 4 without significance filtering. The code to generate these is not repeated in this section.
     
 - **`panel_C`**
   Fit linear models using each vertex-wise t-map as the response variables and all seven unique combinations of eigenmodes as predictors.
@@ -153,6 +153,13 @@ The code for generating the supplementary figures is described below.
 
   - `tpl-week-40/`
     Includes the week-40 pial surface, as well as the Von Economo's and Schaefer-200's week-40 template vertex-wise parcel indices.
+
+  - `S1_Data.xlsx`
+    This file contains precomputed values required to reproduce **Figure 5B**.
+    - **Sheet 1** contains the correlations between the parcel-wise t-maps (for each age variable and central moment) and each of the three geometric eigenmodes (eigenmodes 2–4). The sheet also includes the associated permutation p-values and the 95% null distribution intervals (2.5th and 97.5th percentiles).
+    - **Sheet 2** contains the parcel-wise t-values of the linear models used in the analysis, with each central moment as the response variable and each age variable as the predictor.  
+  A value of `-100` is assigned to non-cortical and limbic parcels. No significance threshold was applied to these t-values. We've also added the parcel-wise average values of each central moment across all individuals, which can be used to generate Figure 2B.
+      **Note:** If you wish to recompute the correlations between the t-maps and eigenmodes using the values provided in Sheet 2 (instead of generating them from scratch using the analysis scripts), replace the `-100` values with `NaN` before upsampling them to vertex-level using the `code/BoSurfStatMakeParcelData.m` function and performing the correlation analyses with the eigenmodes (`resources/week-40_pial_emode_2-4.txt`).
 
 Individual-level data are **not included** in this repository. The data must be obtained and prepared as described in the **Data Availability** section below. After preparation, the data should be placed in a folder named `data/` within the root directory of the repository.
 
@@ -216,7 +223,7 @@ Users must ensure that these toolboxes are installed and added to the MATLAB pat
 - Fit linear models (`moment ~ PMA + sex` and `moment ~ GA + PNA + sex`) for each parcel using the data parcellated using the Von Economo atlas and data parcellated using the Schaefer-200 atlas.
 
 - Plot the resulting t-values on the wk40 cortical surface without applying significance filtering.
-  *Note: To achieve the same masking of non-cortical and limbic parcels, the Von Economo results were upsampled to vertex-level and the vertex-indices of the non-cortical and limbic parcels were used to masked the data upsampled from the Schaefer-200 parcellation to vertex-level.
+  **Note:** To achieve the same masking of non-cortical and limbic parcels, the Von Economo results were upsampled to vertex-level and the vertex-indices of the non-cortical and limbic parcels were used to masked the data upsampled from the Schaefer-200 parcellation to vertex-level.
 
 - Spin the t-maps of the Von Economo-parcellated data using precomputed permutation indices.
 
